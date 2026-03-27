@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Private Anonymous Chat</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0a0a0a;
+      color: #ddd;
+      font-family: system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      direction: ltr;
+      unicode-bidi: embed;
+    }
+    #login {
+      background: #1f1f1f;
+      padding: 40px;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    h1 { color: #0f0; margin: 0 0 10px 0; }
+    p { color: #aaa; margin-bottom: 20px; }
+    input {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #333;
+      color: white;
+      margin-bottom: 15px;
+      direction: ltr;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      background: #0f0;
+      color: black;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover { background: #0c0; }
+    #error { color: #f66; min-height: 20px; }
+
+    #chat {
+      display: none;
+      width: 100%;
+      max-width: 800px;
+      height: 90vh;
+      background: #111;
+      border-radius: 16px;
+      overflow: hidden;
+      flex-direction: column;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+    }
+    #messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background: url('wallpaper.jpg') center/cover no-repeat;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      direction: ltr;
+    }
+    .msg {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: #1f1f1f;
+      align-self: flex-start;
+      direction: ltr;
+      unicode-bidi: embed;
+      position: relative;
+      user-select: none;
+    }
+    .msg.self {
+      align-self: flex-end;
+      background: #003300;
+    }
+    .msg strong {
+      color: #0f0;
+      font-size: 13px;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    /* WhatsApp-style input bar */
+    #input-area {
+      padding: 8px 12px 12px;
+      background: #1a1a1a;
+      display: flex;
+      align-items: end;
+      gap: 8px;
+      border-top: 1px solid #333;
+    }
+    #input-wrapper {
+      flex: 1;
+      background: #333;
+      border-radius: 9999px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      min-height: 48px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    #input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      color: white;
+      padding: 4px 0;
+      direction: ltr;
+    }
+    #send {
+      width: 42px;
+      height: 42px;
+      background: #0f0;
+      color: black;
+      border: none;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    #send:hover {
+      background: #0c0;
+      transform: scale(1.05);
+    }
+
+    /* Context Menu */
+    #context-menu {
+      display: none;
+      position: absolute;
+      background: #1f1f1f;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 4px 0;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+      z-index: 10000;
+      min-width: 160px;
+    }
+    #context-menu button {
+      background: none;
+      border: none;
+      color: #f66;
+      padding: 12px 20px;
+      width: 100%;
+      text-align: left;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #context-menu button:hover {
+      background: #333;
+    }
+
+    .info {
+      text-align: center;
+      font-size: 12px;
+      color: #555;
+      padding: 8px;
+      background: #1a1a1a;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Password Screen -->
+  <div id="login">
+    <h1>School's Stairs</h1>
+    <p>Enter password to join</p>
+    <input type="password" id="pw" placeholder="Password">
+    <button onclick="join()">Enter Chat</button>
+    <div id="error"></div>
+  </div>
+
+  <!-- Chat Screen -->
+  <div id="chat">
+    
+    <div id="messages"></div>
+    
+    <!-- WhatsApp-style bottom bar -->
+    <div id="input-area">
+      <div id="input-wrapper">
+        <input type="text" id="input" placeholder="Type a message...">
+      </div>
+      <button id="send">➤</button>
+    </div>
+    
+    <div class="info">
+      BUILT IN PANJAB
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="context-menu">
+    <button id="delete-option"> Delete message</button>
+  </div>
+
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script>
+    // ================== CHANGE THIS LINE ONLY ==================
+    const SERVER_URL = "https://YOUR-CHAT.onrender.com";   // ← put your deployed link here
+    // ===========================================================
+
+    const PASSWORD = "541953";   // ← change if you want
+
+    let myName = "";
+    let unknownCounter = 1;
+    const socket = io(SERVER_URL);
+
+    const loginDiv = document.getElementById('login');
+    const chatDiv = document.getElementById('chat');
+    const messagesDiv = document.getElementById('messages');
+    const input = document.getElementById('input');
+    const errorDiv = document.getElementById('error');
+    const contextMenu = document.getElementById('context-menu');
+    const deleteOption = document.getElementById('delete-option');
+
+    let currentMsgId = null;
+    let currentMsgElement = null;
+
+    function generateId() {
+      return Date.now() + '-' + Math.random().toString(36).substring(2, 8);
+    }
+
+    function join() {
+      const entered = document.getElementById('pw').value.trim();
+      if (entered !== PASSWORD) {
+        errorDiv.textContent = "Wrong password";
+        return;
+      }
+      socket.emit('join', entered);
+    }
+
+    socket.on('joined', (data) => {
+      myName = data.yourName;
+      loginDiv.style.display = 'none';
+      chatDiv.style.display = 'flex';
+
+      messagesDiv.innerHTML = '';
+      data.history.forEach(msg => addMessage(msg));
+      input.focus();
+    });
+
+    socket.on('joinFailed', (msg) => {
+      errorDiv.textContent = msg;
+    });
+
+    function addMessage(msg) {
+      const div = document.createElement('div');
+      div.className = `msg ${msg.sender === myName ? 'self' : ''}`;
+      div.dataset.id = msg.id;
+      
+      div.innerHTML = `
+        <strong>${msg.sender}:</strong> ${msg.text}
+      `;
+
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      if (msg.sender === myName) {
+        attachContextMenu(div, msg.id);
+      }
+    }
+
+    function attachContextMenu(msgDiv, msgId) {
+      msgDiv.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showContextMenu(e, msgId, msgDiv);
+      });
+
+      let pressTimer;
+      msgDiv.addEventListener('touchstart', (e) => {
+        pressTimer = setTimeout(() => {
+          const touch = e.touches[0];
+          const fakeEvent = { pageX: touch.pageX, pageY: touch.pageY };
+          showContextMenu(fakeEvent, msgId, msgDiv);
+        }, 600);
+      });
+
+      msgDiv.addEventListener('touchend', () => clearTimeout(pressTimer));
+      msgDiv.addEventListener('touchmove', () => clearTimeout(pressTimer));
+    }
+
+    function showContextMenu(e, msgId, msgElement) {
+      currentMsgId = msgId;
+      currentMsgElement = msgElement;
+
+      let left = e.pageX;
+      let top = e.pageY;
+
+      if (left + 180 > window.innerWidth) left = window.innerWidth - 180;
+      if (top + 80 > window.innerHeight) top = window.innerHeight - 80;
+
+      contextMenu.style.left = left + 'px';
+      contextMenu.style.top = top + 'px';
+      contextMenu.style.display = 'block';
+    }
+
+    function hideContextMenu() {
+      contextMenu.style.display = 'none';
+      currentMsgId = null;
+      currentMsgElement = null;
+    }
+
+    deleteOption.addEventListener('click', () => {
+      if (currentMsgId) {
+        socket.emit('deleteMessage', currentMsgId);
+      }
+      hideContextMenu();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!contextMenu.contains(e.target)) hideContextMenu();
+    });
+
+    function sendMessage() {
+      const text = input.value.trim();
+      if (!text || !myName) return;
+
+      socket.emit('chat message', text);
+      input.value = '';
+    }
+
+    socket.on('chat message', (msg) => {
+      addMessage(msg);
+    });
+
+    socket.on('messageDeleted', (id) => {
+      const element = document.querySelector(`.msg[data-id="${id}"]`);
+      if (element) element.remove();
+    });
+
+    document.getElementById('send').addEventListener('click', sendMessage);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+  </script>
+</body>
+</html>
